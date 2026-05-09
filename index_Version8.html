@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sam ki Jan — Love Blossom (All features + Chat Commands)</title>
+  <meta name="description" content="Love calculator, shayari, confetti, background music, and chat commands — single page." />
+  <style>
+    :root{
+      --bg1:#ff9a9e;--bg2:#fad0c4;--accent:#ff6b81;--muted:rgba(0,0,0,0.6);
+      --card:rgba(255,255,255,0.96);--glass:rgba(255,255,255,0.55);--radius:14px;
+      font-family:Inter, "Helvetica Neue", Arial, sans-serif;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{
+      margin:0;background:linear-gradient(135deg,var(--bg1),var(--bg2));
+      display:flex;align-items:center;justify-content:center;padding:20px;color:#222;
+      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+    }
+    .container{width:100%;max-width:1000px}
+    .hero{text-align:center;margin-bottom:18px}
+    .hero h1{margin:0;font-size:2rem;color:#570720}
+    .tagline{margin:6px 0 14px;color:var(--muted)}
+    .top-controls{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+    .btn-ghost{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:8px 10px;border-radius:8px;cursor:pointer}
+    .heart-wrap{display:flex;justify-content:center;margin-top:8px}
+    .heart{width:110px;height:100px;position:relative;transform-origin:center;background:linear-gradient(180deg,#ff4b6e,#ff79a8);border-radius:50%;box-shadow:0 8px 30px rgba(0,0,0,0.12), inset 0 -6px 18px rgba(255,255,255,0.12);display:inline-block}
+    .heart:before,.heart:after{content:"";position:absolute;top:0;left:25px;width:50px;height:80px;background:linear-gradient(180deg,#ff4b6e,#ff79a8);border-radius:50px 50px 0 0;transform:rotate(-45deg)}
+    .heart:after{left:auto;right:25px;transform:rotate(45deg)}
+    .heart.pulse{animation:heartbeat 1s ease-in-out infinite}
+    @keyframes heartbeat{0%{transform:scale(1)}14%{transform:scale(1.18)}28%{transform:scale(1)}42%{transform:scale(1.12)}70%{transform:scale(1)}100%{transform:scale(1)}}
+
+    .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:0 8px 30px rgba(0,0,0,0.08)}
+    .controls{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+    .btn{background:var(--accent);color:white;padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:600;box-shadow:0 6px 18px rgba(255,107,129,0.16)}
+    .btn.ghost{background:transparent;color:#6b2b3f;border:1px solid rgba(107,43,63,0.08)}
+    .btn.small{padding:6px 8px;font-size:0.9rem}
+    input[type="text"], textarea{padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);width:100%}
+    .music-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+    .share-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .small{padding:6px 8px;border-radius:8px}
+    .badge{background:rgba(255,255,255,0.8);padding:6px 10px;border-radius:999px;border:1px solid rgba(0,0,0,0.04)}
+    canvas#confetti{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:9999}
+    .chat-window{height:260px;overflow:auto;border-radius:10px;padding:10px;background:linear-gradient(180deg,rgba(255,255,255,0.95),rgba(255,255,255,0.98));border:1px solid rgba(0,0,0,0.04)}
+    .msg{margin:6px 0;display:flex;gap:8px;align-items:flex-start}
+    .msg .bubble{padding:10px 12px;border-radius:12px;max-width:78%;white-space:pre-line}
+    .msg.user .bubble{background:#ffeff3;color:#4b1220;margin-left:auto;border-bottom-right-radius:4px}
+    .msg.bot .bubble{background:#fff;color:#222;border:1px solid rgba(0,0,0,0.04)}
+    .cmd-hint{font-size:0.9rem;color:var(--muted);margin-top:8px}
+    @media (max-width:720px){ .heart{width:86px;height:76px} .chat-window{height:200px} }
+  </style>
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+  <audio id="bg-audio" crossorigin="anonymous"></audio>
+
+  <main class="container" aria-live="polite">
+    <header class="hero">
+      <div class="top-controls">
+        <button id="lang-toggle" class="btn-ghost" aria-pressed="false">English</button>
+        <button id="music-toggle" class="btn-ghost" aria-pressed="false">Ambient</button>
+        <button id="celebrate-btn" class="btn-ghost">Celebrate</button>
+      </div>
+      <h1 id="site-title">Sam ki Jan ❤️</h1>
+      <p id="tagline" class="tagline">Calculate love, read shayari, feel the heartbeat, and chat with fun commands.</p>
+      <div class="heart-wrap" aria-hidden="true">
+        <div id="big-heart" class="heart" role="img" aria-label="Heart"></div>
+      </div>
+
+      <!-- Music controls (kept) -->
+      <div class="music-controls" style="margin-top:12px">
+        <label class="btn-ghost small" id="choose-btn" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+          Choose Your Song
+          <input id="audio-file" type="file" accept="audio/*" style="display:none" />
+        </label>
+        <input id="audio-url" type="text" placeholder="Paste direct audio URL (mp3/ogg) and press Load" style="min-width:200px" />
+        <button id="load-url" class="btn-ghost small">Load</button>
+        <button id="play-pause-audio" class="btn small">Play Music</button>
+        <label class="btn-ghost small" style="display:inline-flex;align-items:center;gap:8px">
+          Volume <input id="audio-volume" type="range" min="0" max="1" step="0.01" value="0.35" />
+        </label>
+        <label class="btn-ghost small" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+          <input id="audio-loop" type="checkbox" checked /> Loop
+        </label>
+      </div>
+    </header>
+
+    <!-- Love calculator (kept) -->
+    <section class="card calc-card" aria-labelledby="calc-heading">
+      <h2 id="calc-heading">Love Calculator</h2>
+      <form id="calc-form" onsubmit="return false;">
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <label style="flex:1;display:flex;flex-direction:column">
+            <span style="color:var(--muted)">Your name</span>
+            <input id="nameA" type="text" placeholder="e.g. Aisha" autocomplete="name" />
+          </label>
+          <label style="flex:1;display:flex;flex-direction:column">
+            <span style="color:var(--muted)">Partner's name</span>
+            <input id="nameB" type="text" placeholder="e.g. Aarav" autocomplete="name" />
+          </label>
+        </div>
+        <div class="controls">
+          <button id="calc-btn" class="btn" type="button">Calculate ❤️</button>
+          <button id="shuffle-btn" class="btn ghost" type="button">Surprise</button>
+          <button id="share-score" class="btn small ghost" type="button">Share Result</button>
+        </div>
+      </form>
+
+      <div id="result" style="margin-top:12px">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div id="score" style="font-size:1.6rem;font-weight:700;color:#ff2e63">--%</div>
+          <div id="message" style="color:var(--muted)">Enter names and tap Calculate</div>
+        </div>
+        <div style="height:12px;background:linear-gradient(90deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02));border-radius:8px;margin-top:10px;overflow:hidden">
+          <div id="progress-bar" style="height:100%;width:0;background:linear-gradient(90deg,#ff7fa1,#ff2e63);transition:width 900ms cubic-bezier(.2,.9,.2,1)"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Shayari (kept) -->
+    <section class="card shayari-card" aria-labelledby="shayari-heading">
+      <h2 id="shayari-heading">Shayari & Poetry</h2>
+      <div style="padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.98));min-height:86px">
+        <blockquote id="shayari-text" style="margin:0;font-size:1.05rem;color:#4b1a29;white-space:pre-line">Click "Random Shayari" to see a poem.</blockquote>
+        <cite id="shayari-author" style="display:block;margin-top:8px;color:var(--muted);font-size:0.9rem"></cite>
+      </div>
+      <div class="controls" style="margin-top:10px">
+        <button id="random-shayari" class="btn">Random Shayari</button>
+        <button id="prev-shayari" class="btn ghost">Prev</button>
+        <button id="next-shayari" class="btn ghost">Next</button>
+        <button id="fav-shayari" class="btn">♡ Save</button>
+        <button id="copy-shayari" class="btn ghost">Copy</button>
+        <button id="share-shayari" class="btn small ghost">Share</button>
+      </div>
+      <details style="margin-top:12px">
+        <summary style="cursor:pointer;padding:10px;border-radius:8px;background:rgba(0,0,0,0.03)">Favorites</summary>
+        <ul id="favorites-list" style="list-style:none;padding:8px;margin:0;max-height:160px;overflow:auto"></ul>
+      </details>
+    </section>
+
+    <!-- Chat & Commands (NEW) -->
+    <section class="card" aria-labelledby="chat-heading">
+      <h2 id="chat-heading">Chat & Fun Commands</h2>
+
+      <div class="chat-window" id="chat-window" aria-live="polite" role="log"></div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+        <input id="chat-input" type="text" placeholder='Type message or command (e.g. "/romantic")' style="flex:1" />
+        <button id="chat-send" class="btn small">Send</button>
+        <button id="chat-help" class="btn small ghost">Commands</button>
+        <button id="chat-surprise" class="btn small ghost">Surprise Reply</button>
+      </div>
+      <div class="cmd-hint">
+        Commands start with / (slash). Example: /romantic /flirt /compliment /shayari /pickup /fortune /joke /help
+      </div>
+    </section>
+
+    <footer style="text-align:center;color:var(--muted);margin-top:10px">
+      <p>Made with ❤️. Everything client-side — save favorites & settings in your browser.</p>
+      <div class="share-row" style="justify-content:center"><span class="badge">Single-file v1.4</span></div>
+    </footer>
+  </main>
+
+  <script>
+    /* ===========================
+       Shared data & i18n (short)
+       =========================== */
+    const i18n = { hi: {}, en: {} };
+    let lang = 'hi';
+
+    /* ===========================
+       Elements
+       =========================== */
+    const bigHeart = document.getElementById('big-heart');
+    const confettiCanvas = document.getElementById('confetti');
+    const ctx = confettiCanvas.getContext('2d');
+    const chatWindow = document.getElementById('chat-window');
+    const chatInput = document.getElementById('chat-input');
+    const chatSend = document.getElementById('chat-send');
+    const chatHelp = document.getElementById('chat-help');
+    const chatSurprise = document.getElementById('chat-surprise');
+
+    // Music & other elements reused
+    const bgAudio = document.getElementById('bg-audio');
+    const audioFile = document.getElementById('audio-file');
+    const audioUrl = document.getElementById('audio-url');
+    const loadUrlBtn = document.getElementById('load-url');
+    const playPauseBtn = document.getElementById('play-pause-audio');
+    const volumeSlider = document.getElementById('audio-volume');
+    const loopCheckbox = document.getElementById('audio-loop');
+
+    // Shayari & favorites elements
+    const shayariText = document.getElementById('shayari-text');
+    const shayariAuthor = document.getElementById('shayari-author');
+    const randomShayariBtn = document.getElementById('random-shayari');
+    const prevShayariBtn = document.getElementById('prev-shayari');
+    const nextShayariBtn = document.getElementById('next-shayari');
+    const favBtn = document.getElementById('fav-shayari');
+    const copyBtn = document.getElementById('copy-shayari');
+    const shareShayariBtn = document.getElementById('share-shayari');
+    const favoritesList = document.getElementById('favorites-list');
+
+    // Love calc
+    const nameA = document.getElementById('nameA');
+    const nameB = document.getElementById('nameB');
+    const calcBtn = document.getElementById('calc-btn');
+    const shuffleBtn = document.getElementById('shuffle-btn');
+    const scoreEl = document.getElementById('score');
+    const messageEl = document.getElementById('message');
+    const progressBar = document.getElementById('progress-bar');
+    const shareScoreBtn = document.getElementById('share-score');
+
+    /* ===========================
+       Shayari content (kept/extended)
+       =========================== */
+    const shayaris = [
+      { text: "तेरी मुस्कान मेरी पहचान है,\nतेरी ख़ुशी मेरी जान है।", author: "— Unknown" },
+      { text: "अगर मोहब्बत एक सफर है तो तुम मेरे साथ हो,\nहर मंज़िल हसीन है।", author: "— Romance" },
+      { text: "तेरी आँखों में जो देखा,\nहर ग़म को भुला दिया।", author: "— Shayari" },
+      { text: "I saw you in a dream; you were everything I wanted to keep.", author: "— Anonymous" },
+      { text: "हम मिले तो ख्वाबों की दुनिया सजी,\nसाथ तुम्हारा जैसे सुबह का उजाला।", author: "— Poet" },
+      { text: "Jo dil se nikle alfaaz,\nbas tumhare naam karein.", author: "— Heart" }
+    ];
+    let shayIndex = 0;
+
+    function renderShayari(i){ shayIndex = ((i % shayaris.length)+shayaris.length)%shayaris.length; const s = shayaris[shayIndex]; shayariText.textContent = s.text; shayariAuthor.textContent = s.author || ''; updateFavButton(); }
+    randomShayariBtn.addEventListener('click', ()=>renderShayari(Math.floor(Math.random()*shayaris.length)));
+    prevShayariBtn.addEventListener('click', ()=>renderShayari(shayIndex-1));
+    nextShayariBtn.addEventListener('click', ()=>renderShayari(shayIndex+1));
+
+    /* ===========================
+       Favorites localStorage (shayari)
+       =========================== */
+    const LS_KEY = 'love_shayari_favs_v1';
+    function loadFavorites(){ try{ const raw = localStorage.getItem(LS_KEY); return raw?JSON.parse(raw):[] }catch(e){return[]} }
+    function saveFavorites(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); refreshFavoritesList() }
+    function toggleFavorite(){ const s = shayaris[shayIndex]; const favs = loadFavorites(); const exists = favs.find(f=>f.text===s.text); if(exists) saveFavorites(favs.filter(f=>f.text!==s.text)); else { favs.unshift(s); saveFavorites(favs); } updateFavButton(); }
+    favBtn.addEventListener('click', toggleFavorite);
+    function updateFavButton(){ const s = shayaris[shayIndex]; const favs = loadFavorites(); const exists = favs.find(f=>f.text===s.text); favBtn.textContent = exists? '♥ Saved' : '♡ Save'; }
+    function refreshFavoritesList(){ const favs = loadFavorites(); favoritesList.innerHTML=''; if(favs.length===0){ favoritesList.innerHTML='<li><em>No favorites yet</em></li>'; return } favs.forEach((f,i)=>{ const li=document.createElement('li'); const txt=document.createElement('span'); txt.textContent = f.text + (f.author?` ${f.author}`:''); txt.style.flex='1'; txt.style.marginRight='8px'; const del=document.createElement('button'); del.textContent='Remove'; del.addEventListener('click', ()=>{ const newFavs = favs.filter((_,idx)=>idx!==i); saveFavorites(newFavs); }); li.appendChild(txt); li.appendChild(del); favoritesList.appendChild(li); }) }
+    copyBtn.addEventListener('click', async ()=>{ const text = shayariText.textContent + (shayariAuthor.textContent? ` — ${shayariAuthor.textContent}`:''); try{ await navigator.clipboard.writeText(text); copyBtn.textContent='Copied!'; setTimeout(()=>copyBtn.textContent='Copy',1500)}catch(e){ copyBtn.textContent='Copy failed'; setTimeout(()=>copyBtn.textContent='Copy',1500) } });
+    shareShayariBtn.addEventListener('click', async ()=>{ const text = shayariText.textContent + (shayariAuthor.textContent? ` ${shayariAuthor.textContent}`:''); if(navigator.share){ try{ await navigator.share({ title:'Shayari', text }) }catch(e){ fallbackCopy(text) } } else fallbackCopy(text) });
+
+    /* ===========================
+       Love calculator logic (kept)
+       =========================== */
+    function loveScore(a,b,opts={}){ const A=(a||"").toLowerCase().replace(/[^a-z\u0600-\u06FF0-9]/gi,""); const B=(b||"").toLowerCase().replace(/[^a-z\u0600-\u06FF0-9]/gi,""); if(!A||!B) return null; const setA=new Set(A), setB=new Set(B); let common=0; setA.forEach(ch=>{ if(setB.has(ch)) common++ }); const sum=s=>Array.from(s).reduce((acc,c)=>acc+c.charCodeAt(0),0); const sA=sum(A), sB=sum(B); const base=Math.abs((sA-sB)%101); const lenFactor=Math.min(30,Math.abs(A.length-B.length)*3); let score=Math.round((50 + (common*7) + (100-base)*0.2 - lenFactor)); score=Math.max(1,Math.min(100,score)); if(opts.randomize){ const seed=(sA+sB+common)%97; const rand=(Math.abs(Math.sin(seed))*100)%7; score=Math.max(1,Math.min(100,score+Math.round(rand-3))); } return score; }
+    function resultMessage(score){ if(score>=90) return "Soulmates! 💞"; if(score>=75) return "A beautiful match ✨"; if(score>=50) return "Promising — give it time 🌱"; if(score>=30) return "Needs work, but hope remains 🌤️"; return "Cute! Keep smiling 🙂"; }
+    function animateHeartForScore(score){ bigHeart.classList.remove('pulse'); void bigHeart.offsetWidth; if(score>=75){ bigHeart.style.transform="scale(1.05)"; bigHeart.classList.add('pulse'); bigHeart.style.filter="drop-shadow(0 20px 50px rgba(255,80,130,0.28))"; } else if(score>=50){ bigHeart.style.transform="scale(1.01)"; bigHeart.classList.add('pulse'); bigHeart.style.filter="drop-shadow(0 12px 30px rgba(255,80,130,0.18))"; } else { bigHeart.style.transform="scale(0.98)"; bigHeart.classList.remove('pulse'); bigHeart.style.filter="drop-shadow(0 6px 14px rgba(0,0,0,0.08))"; } }
+    function showScore(score){ scoreEl.textContent = `${score}%`; messageEl.textContent = resultMessage(score); progressBar.style.width = `${score}%`; animateHeartForScore(score); if(score >= 85){ fireConfetti(120); playHeartbeatTune(3); } }
+
+    calcBtn.addEventListener('click', ()=>{ const a=nameA.value.trim(); const b=nameB.value.trim(); const sc=loveScore(a,b,{randomize:false}); if(sc===null){ scoreEl.textContent='--%'; messageEl.textContent='Please enter both names'; progressBar.style.width='0%'; return } showScore(sc); });
+    shuffleBtn.addEventListener('click', ()=>{ const a=nameA.value.trim()||"You"; const b=nameB.value.trim()||"Love"; const sc=loveScore(a,b,{randomize:true}); showScore(sc); fireConfetti(40); });
+    shareScoreBtn.addEventListener('click', async ()=>{ const a=nameA.value.trim()||'Someone', b=nameB.value.trim()||'Someone', score=scoreEl.textContent||'--%'; const text=`${a} + ${b} = ${score} — Sam ki Jan`; if(navigator.share){ try{ await navigator.share({ title:'Love Score', text }); }catch(e){ fallbackCopy(text) } } else fallbackCopy(text); });
+
+    /* ===========================
+       Confetti system (kept)
+       =========================== */
+    function resizeCanvas(){ confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas); resizeCanvas();
+    function randomRange(min,max){ return Math.random()*(max-min)+min }
+    let confettiParticles = [];
+    function fireConfetti(count=80){ const cx=window.innerWidth/2, cy=window.innerHeight/3; for(let i=0;i<count;i++){ confettiParticles.push({ x:cx+randomRange(-200,200), y:cy+randomRange(-80,80), vx:randomRange(-6,6), vy:randomRange(-10,-2), size:randomRange(6,14), rot:randomRange(0,360), vr:randomRange(-10,10), color:`hsl(${Math.floor(randomRange(0,360))} ${randomRange(60,90)}% ${randomRange(45,60)}%)`, life:randomRange(60,140) }); } }
+    function confettiLoop(){ ctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height); for(let i=confettiParticles.length-1;i>=0;i--){ const p=confettiParticles[i]; p.vy+=0.25; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.life--; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180); ctx.fillStyle=p.color; ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6); ctx.restore(); if(p.y>confettiCanvas.height+50||p.life<=0) confettiParticles.splice(i,1); } requestAnimationFrame(confettiLoop); } requestAnimationFrame(confettiLoop);
+
+    /* ===========================
+       WebAudio heartbeat & ambient (kept)
+       =========================== */
+    let audioCtx = null, masterGain = null;
+    function ensureAudio(){ if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); masterGain = audioCtx.createGain(); masterGain.gain.value = 0.0; masterGain.connect(audioCtx.destination); } }
+    let ambientOscs = [], musicOn = false;
+    document.getElementById('music-toggle').addEventListener('click', ()=>{ if(!musicOn) startAmbient(); else stopAmbient(); musicOn = !musicOn; document.getElementById('music-toggle').setAttribute('aria-pressed', String(musicOn)); document.getElementById('music-toggle').textContent = musicOn? 'Ambient On' : 'Ambient'; });
+    function startAmbient(){ ensureAudio(); const freqs=[220,330]; ambientOscs = freqs.map((f,i)=>{ const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.type='sine'; o.frequency.value = f + (i===1?3:-3); g.gain.value = 0.02; o.connect(g); g.connect(masterGain); o.start(); return {o,g}; }); masterGain.gain.cancelScheduledValues(audioCtx.currentTime); masterGain.gain.setValueAtTime(0.0,audioCtx.currentTime); masterGain.gain.linearRampToValueAtTime(0.25,audioCtx.currentTime+1.2); }
+    function stopAmbient(){ if(!audioCtx) return; masterGain.gain.cancelScheduledValues(audioCtx.currentTime); masterGain.gain.setValueAtTime(masterGain.gain.value,audioCtx.currentTime); masterGain.gain.linearRampToValueAtTime(0.0,audioCtx.currentTime+0.8); setTimeout(()=>{ ambientOscs.forEach(a=>{ try{ a.o.stop() }catch(e){}; a.o.disconnect(); a.g.disconnect(); }); ambientOscs=[]; },900); }
+    function playHeartbeatTune(beats=2){ ensureAudio(); const now = audioCtx.currentTime; const g = audioCtx.createGain(); g.gain.value = 0; g.connect(masterGain); const o = audioCtx.createOscillator(); o.type='sine'; o.frequency.value = 120; o.connect(g); o.start(); for(let i=0;i<beats;i++){ const t = now + i*0.5; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.6, t+0.02); g.gain.exponentialRampToValueAtTime(0.0001, t+0.16); } setTimeout(()=>{ try{o.stop()}catch(e){}; o.disconnect(); g.disconnect(); }, beats*500 + 300); }
+
+    document.getElementById('celebrate-btn').addEventListener('click', ()=>{ fireConfetti(180); playHeartbeatTune(4); bigHeart.classList.remove('pulse'); void bigHeart.offsetWidth; bigHeart.classList.add('pulse'); });
+
+    /* ===========================
+       Background audio controls (kept)
+       =========================== */
+    const BG_KEY = 'sam_default_audio_url_v1', VOL_KEY = 'sam_audio_vol_v1', LOOP_KEY = 'sam_audio_loop_v1';
+    function setAudioSource(src, sourceLabel='', saveUrl=false, isObjectUrl=false){ if(bgAudio.dataset.objectUrl && bgAudio.dataset.objectUrl !== src){ try{ URL.revokeObjectURL(bgAudio.dataset.objectUrl); }catch(e){} bgAudio.dataset.objectUrl=''; } bgAudio.src = src; if(isObjectUrl) bgAudio.dataset.objectUrl = src; if(saveUrl) localStorage.setItem(BG_KEY, src); try{ bgAudio.loop = loopCheckbox.checked; bgAudio.volume = parseFloat(volumeSlider.value);}catch(e){} playPauseBtn.textContent = bgAudio.paused ? 'Play Music' : 'Pause Music'; }
+    const savedUrl = localStorage.getItem(BG_KEY); if(savedUrl) setAudioSource(savedUrl,'Saved default',false,false);
+    document.getElementById('choose-btn').addEventListener('click', ()=> audioFile.click());
+    audioFile.addEventListener('change', (e)=>{ const f = e.target.files && e.target.files[0]; if(!f) return; const url = URL.createObjectURL(f); setAudioSource(url, f.name, false, true); bgAudio.play().then(()=> playPauseBtn.textContent='Pause Music').catch(()=> playPauseBtn.textContent='Play Music'); });
+    loadUrlBtn.addEventListener('click', ()=>{ const url = audioUrl.value.trim(); if(!url){ alert('Please paste a direct audio URL'); return } if(!(/\.(mp3|ogg|wav|m4a|aac)(\?.*)?$/i).test(url) && !confirm('URL may not be an audio file. Try anyway?')) return; const save = document.getElementById('save-url') && document.getElementById('save-url').checked; setAudioSource(url, url.split('/').pop()||'Loaded', save, false); bgAudio.play().then(()=> playPauseBtn.textContent='Pause Music').catch(err=>{ console.warn(err); alert('Playback failed (CORS/autoplay). Click Play to allow playback.'); }); });
+    playPauseBtn.addEventListener('click', async ()=>{ if(!bgAudio.src){ alert('No song loaded. Upload or paste URL.'); return } try{ if(bgAudio.paused){ await bgAudio.play(); playPauseBtn.textContent='Pause Music'; } else { bgAudio.pause(); playPauseBtn.textContent='Play Music'; } }catch(e){ alert('Playback failed — try interacting with the page first.'); } });
+    volumeSlider.addEventListener('input', ()=>{ bgAudio.volume = parseFloat(volumeSlider.value); localStorage.setItem(VOL_KEY, String(volumeSlider.value)); });
+    loopCheckbox.addEventListener('change', ()=>{ bgAudio.loop = loopCheckbox.checked; localStorage.setItem(LOOP_KEY, String(loopCheckbox.checked)); });
+    const savedVol = localStorage.getItem(VOL_KEY); if(savedVol){ volumeSlider.value = savedVol; bgAudio.volume = parseFloat(savedVol); } const savedLoop = localStorage.getItem(LOOP_KEY); if(savedLoop){ loopCheckbox.checked = (savedLoop === 'true'); bgAudio.loop = loopCheckbox.checked; }
+    window.addEventListener('unload', ()=>{ if(bgAudio.dataset.objectUrl){ try{ URL.revokeObjectURL(bgAudio.dataset.objectUrl) }catch(e){} } });
+
+    /* ===========================
+       Utilities
+       =========================== */
+    function fallbackCopy(text){ try{ navigator.clipboard.writeText(text); alert('Copied to clipboard'); }catch(e){ prompt('Copy this text', text); } }
+    function botReplyAppend(text){ const div = document.createElement('div'); div.className='msg bot'; const b = document.createElement('div'); b.className='bubble'; b.textContent = text; div.appendChild(b); chatWindow.appendChild(div); chatWindow.scrollTop = chatWindow.scrollHeight; }
+    function userAppend(text){ const div = document.createElement('div'); div.className='msg user'; const b = document.createElement('div'); b.className='bubble'; b.textContent = text; div.appendChild(b); chatWindow.appendChild(div); chatWindow.scrollTop = chatWindow.scrollHeight; }
+
+    /* ===========================
+       Chat commands logic (NEW)
+       =========================== */
+    const commands = {
+      help: {
+        description: "Commands list",
+        exec: ()=> {
+          return "Commands:\n/help — list commands\n/romantic — romantic line\n/flirt — flirty one-liner\n/compliment — sweet compliment\n/shayari — random shayari\n/pickup — cheesy pickup\n/fortune — aaj ka love forecast\n/joke — light romantic joke\n/surprise — random surprise";
+        }
+      },
+      romantic: {
+        description: "Romantic lines",
+        exec: ()=> randomPick([
+          "तुम्हारे बिना मेरी हर सुबह अधूरी है — तुम मेरे साथ रहो तो हर दिन पूरा लगता है। 💖",
+          "तुम्हारी हँसी मेरी सबसे प्यारी आदत है।",
+          "अगर मेरी दुनिया में कोई राजा है, तो वो तुम्हारी मुस्कान है।"
+        ])
+      },
+      flirt: {
+        description: "Flirty lines",
+        exec: ()=> randomPick([
+          "क्या तुम जादू करती हो? क्योंकि जब तुम मुस्कुराती हो तो दुनिया चमक उठती है ✨",
+          "अगर तुम स्टार्स होती तो मैं हर रात तुम्हें घेर लेता।",
+          "तुम्हारी आँखों ने तो मेरा Wi‑Fi chura लिया — connection strong hai ❤️"
+        ])
+      },
+      compliment: {
+        description: "Compliments",
+        exec: ()=> randomPick([
+          "तुम्हारी आवाज़ सुनकर दिन अच्छा लगने लगता है।",
+          "तुम्हारी सादगी में बहुत खूबसूरती है।",
+          "तुम जो भी करो, दिल जीत लेते हो।"
+        ])
+      },
+      shayari: {
+        description: "Random shayari",
+        exec: ()=> {
+          const s = shayaris[Math.floor(Math.random()*shayaris.length)];
+          return s.text + (s.author? ` ${s.author}` : '');
+        }
+      },
+      pickup: {
+        description: "Pickup lines",
+        exec: ()=> randomPick([
+          "क्या तुम्हारे पास नक्शा है? क्योंकि मैं तुम्हारी आँखों में खो गया हूँ।",
+          "तुम्हारी हँसी मुफ्त में मिलती है क्या? वरना मैं हर दिन आने का सोच लूँ।",
+          "मुझे अलार्म सेट करना है — हर सुबह तुम्हारी याद में जाग जाऊँ।"
+        ])
+      },
+      fortune: {
+        description: "Love forecast",
+        exec: ()=> randomPick([
+          "Aaj ka love forecast: चाय की तरह मीठा, पर थोड़ा spicy — naye surprises aa sakte hain ☕️💘",
+          "Aaj affectionate mood high hai — smile dena aaj lucky hoga 😊",
+          "Thoda patience rakho, koi beautiful moment kareeb hai 🌅"
+        ])
+      },
+      joke: {
+        description: "Light jokes",
+        exec: ()=> randomPick([
+          "Why did the phone propose to the Wi‑Fi? — Because it felt a strong connection! 😂",
+          "तुम्हें इतना पसंद करता हूँ कि मेरे दिल को battery saver mode se nikalna पड़ेगा।",
+          "मेरा दिल GPS है — हमेशा तुम्हारे पास redirect करता है."
+        ])
+      },
+      surprise: {
+        description: "Random mix",
+        exec: ()=> {
+          const keys = Object.keys(commands);
+          const pick = keys[Math.floor(Math.random()*keys.length)];
+          return commands[pick].exec();
+        }
+      }
+    };
+
+    function randomPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+    function processCommand(raw){
+      const txt = raw.trim();
+      if(!txt) return "Kuch likho pehle 😊";
+      if(txt.startsWith('/')){
+        const parts = txt.slice(1).split(/\s+/);
+        const cmd = parts[0].toLowerCase();
+        if(commands[cmd]) {
+          try {
+            const resp = commands[cmd].exec(parts.slice(1));
+            // some commands trigger effects
+            if(cmd === 'romantic' || cmd === 'shayari' || cmd === 'flirt' || cmd === 'pickup') {
+              fireConfetti(40);
+              playHeartbeatTune(2);
+            }
+            return resp;
+          } catch(e) { return "Kuch gadbad hui, try again."; }
+        } else {
+          return "Unknown command. Type /help to dekhain commands.";
+        }
+      } else {
+        // plain message: playful echo with small transformation
+        const low = txt.toLowerCase();
+        if(low.includes('love') || low.includes('pyaar') || low.includes('ishq')) {
+          fireConfetti(30);
+          playHeartbeatTune(2);
+          return "Aww ❤️ — dil ko choo gaya. Try /romantic ya /shayari!";
+        }
+        if(low.includes('hi')||low.includes('hello')||low.includes('hey')) return randomPick(["Hello! 😊","Hi there! 💫","Hey! Tum kaise ho?"]);
+        return randomPick(["Mast baat! 💖", "Woh kya hai— thoda aur bolo 😉", "Type /help for fun commands."]);
+      }
+    }
+
+    // Chat send handler
+    async function sendChat(){
+      const val = chatInput.value.trim();
+      if(!val) return;
+      userAppend(val);
+      chatInput.value = '';
+      // simulate typing
+      botReplyAppend('typing...');
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+      await new Promise(r=>setTimeout(r, 700 + Math.random()*700));
+      // replace typing with real reply
+      chatWindow.removeChild(chatWindow.lastChild);
+      const reply = processCommand(val);
+      botReplyAppend(reply);
+    }
+
+    chatSend.addEventListener('click', sendChat);
+    chatInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendChat(); } });
+    chatHelp.addEventListener('click', ()=>{ userAppend('/help'); const reply = processCommand('/help'); botReplyAppend(reply); });
+    chatSurprise.addEventListener('click', ()=>{ userAppend('/surprise'); const reply = processCommand('/surprise'); botReplyAppend(reply); });
+
+    /* ===========================
+       Small init
+       =========================== */
+    renderShayari(0);
+    refreshFavoritesList();
+    // greet
+    setTimeout(()=> botReplyAppend("Namaste! Chat me /help likhiye aur commands try kijiye. ❤️"),400);
+
+    // accessibility: resume audio context on gesture
+    ['click','touchstart'].forEach(evt => { window.addEventListener(evt, function once(){ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume().catch(()=>{}); window.removeEventListener(evt, once); }) });
+
+  </script>
+</body>
+</html>
